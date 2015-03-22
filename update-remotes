@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+
+"""Fetch, pull, update a list of repositories.
+
+if ! env | grep -q ^WORKSPACE=
+then
+        echo "\$WORKSPACE environment variable is missing"
+        exit 1
+fi
+
+# Plain git repositories
+git_repos=(
+        src/ews-cpp
+        src/privacyguard/cmake
+)
+
+# Repositories managed with git-svn
+git_svn_repos=(
+        src/janus/2.9.4
+        src/janus/2.9.5
+        src/janus/2.9.6
+        src/privacyguard/projects
+        src/privacyguard/6.0
+        src/privacyguard/externals/office
+        src/privacyguard/externals/tomcat
+        src/JsReporting
+)
+
+# Plain Subversion repos, if any
+# svn_repos=()
+
+red='\e[0;31m'
+yellow='\e[0;33m'
+reset='\e[0m'
+
+oldd=$(pwd)
+for repo in "${git_repos[@]}"; do
+        echo -e "Updating from remotes ${yellow}${repo}${reset}"
+        cd $WORKSPACE/${repo};
+        git remote update;
+        git remote prune origin;
+done
+
+for repo in "${git_svn_repos[@]}"; do
+        echo -e "Fetching with git-svn ${yellow}${repo}${reset}"
+        cd $WORKSPACE/${repo};
+        git svn fetch;
+        # git svn rebase; TODO: add --rebase command-line option to actually pull and rebase from server
+done
+cd $oldd
+
+TODO:
+
+    * Using ABCMeta is shit here; why call method if there is no meaningful
+      implementation? Use TemplateMethod instead.
+"""
+
+import sys
+import argparse
+import subprocess
+import os.path
+from abc import (ABCMeta, abstractmethod)
+from contextlib import contextmanager
+import importlib.machinery
+
+try:
+    import colorama
+    colorama.init()
+    color_terminal = True
+except ImportError:
+    print("For colorized output: yum install python3-colorama")
+    color_terminal = None
+
+
+@contextmanager
+def change_directory(target):
+    old = os.getcwd()
+    os.chdir(target)
+    yield target
+    os.chdir(old)
+
+
+class Repository(metaclass=ABCMeta):
+
+    """Base-class for all repo types."""
+
+    def __init__(self, path):
+        self.path = os.path.join(HOME, path)
+        assert os.path.exists(self.path)
+
+    def fetch_changes(self, args):
+        with change_directory(self.path):
+            if color_terminal:
+                print("Fetching changes for " + colorama.Fore.YELLOW +
+                        str(self) + colorama.Style.RESET_ALL + "...")
+            else:
+                print("Fetching changes for {}...".format(self))
+            if args.dry_run:
+                return
+            self.fetch_impl(args)
+
+    def pull_changes(self, args):
+        if args.fetch_only:
+            return
+        with change_directory(self.path):
+            print("Updating working copy...")
+            if args.dry_run:
+                return
+            self.update_impl(args)
+
+    @abstractmethod
+    def fetch_impl(self, args):
+        pass
+
+    @abstractmethod
+    def update_impl(self, args):
+        pass
+
+    def __str__(self):
+        return "{}".format(self.path)
+
+
+class GitRepo(Repository):
+
+    """Plain git repositories."""
+
+    def fetch_impl(self, args):
+        subprocess.call(['git', 'remote', 'update'])
+
+    def update_impl(self, args):
+        subprocess.call(['git', 'pull', '--rebase', 'origin', 'master'])
+
+
+class GitSVNRepo(Repository):
+
+    """Repositories managed with git-svn."""
+
+    def fetch_impl(self):
+        subprocess.call(['git', 'svn', 'fetch'])
+
+    def update_impl(self, args):
+        subprocess.call(['git', 'svn', 'rebase'])
+
+
+class SVNRepo(Repository):
+
+    """Plain Subversion repos."""
+
+    def fetch_impl(self):
+        pass
+
+    def update_impl(self, args):
+        subprocess.call(['svn', 'up'])
+
+
+HOME = os.path.expanduser("~")
+REPO_FILE = os.path.join(HOME, ".repos.txt")
+
+def main():
+    parser = argparse.ArgumentParser(description=
+            "Fetch, pull, and update repositories.")
+    parser.add_argument("--dry-run",
+                        dest="dry_run",
+                        action="store_true",
+                        default=False,
+                        help="do not do anything at all, useful for testing")
+    parser.add_argument("--fetch-only",
+                        dest="fetch_only",
+                        action="store_true",
+                        default=False,
+                        help="do not update working copy")
+    args = parser.parse_args()
+
+    if not os.path.exists(REPO_FILE):
+        print("{} missing. Exiting.".format(REPO_FILE))
+        sys.exit(1)
+
+    loader = importlib.machinery.SourceFileLoader("module.name", REPO_FILE)
+    try:
+        config = loader.load_module()
+    except Exception as exc:
+        print("Could not load repositories from {}. Syntax error?\n{}"
+                .format(REPO_FILE, exc))
+        sys.exit(2)
+
+    repos = []
+    for path in config.git_repos:
+        repos.append(GitRepo(path))
+    for path in config.git_svn_repos:
+        repos.append(GitSVNRepo(path))
+    for path in config.svn_repos:
+        repos.append(SVNRepo(path))
+
+    for repo in repos:
+        repo.fetch_changes(args)
+        repo.pull_changes(args)
+
+if __name__ == "__main__":
+    main()

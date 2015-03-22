@@ -1,2 +1,2 @@
 # repo-tool
-Ugly little helper script.
+Helper script for updating bunch of repositories at once.

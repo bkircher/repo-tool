@@ -1,0 +1,10 @@
+# This is a Python file
+
+git_repos = [
+    "src/linux",
+    "src/git",
+]
+
+svn_repos = []
+
+git_svn_repos = []

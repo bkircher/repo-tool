@@ -135,7 +135,7 @@ class GitSVNRepo(Repository):
 
     """Repositories managed with git-svn."""
 
-    def fetch_impl(self):
+    def fetch_impl(self, args):
         subprocess.call(['git', 'svn', 'fetch'])
 
     def update_impl(self, args):
@@ -146,7 +146,7 @@ class SVNRepo(Repository):
 
     """Plain Subversion repos."""
 
-    def fetch_impl(self):
+    def fetch_impl(self, args):
         pass
 
     def update_impl(self, args):

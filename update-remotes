@@ -175,6 +175,10 @@ def main():
         print("{} missing. Exiting.".format(REPO_FILE))
         sys.exit(1)
 
+    # Make sure we don't write __pycache__ directories when importing config
+    # module
+    sys.dont_write_bytecode = True
+
     loader = importlib.machinery.SourceFileLoader("module.name", REPO_FILE)
     try:
         config = loader.load_module()

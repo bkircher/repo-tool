@@ -92,9 +92,9 @@ class Repository(metaclass=ABCMeta):
         with change_directory(self.path):
             if color_terminal:
                 print("Fetching changes for " + colorama.Fore.YELLOW +
-                        str(self) + colorama.Style.RESET_ALL + "...")
+                        str(self) + colorama.Style.RESET_ALL + " ...")
             else:
-                print("Fetching changes for {}...".format(self))
+                print("Fetching changes for {} ...".format(self))
             if args.dry_run:
                 return
             self.fetch_impl(args)
@@ -103,7 +103,7 @@ class Repository(metaclass=ABCMeta):
         if args.fetch_only:
             return
         with change_directory(self.path):
-            print("Updating working copy...")
+            print("Updating working copy ...")
             if args.dry_run:
                 return
             self.update_impl(args)

@@ -128,7 +128,7 @@ class GitRepo(Repository):
         subprocess.call(['git', 'remote', 'update'])
 
     def update_impl(self, args):
-        subprocess.call(['git', 'pull', '--rebase', 'origin', 'master'])
+        subprocess.call(['git', 'pull', '--rebase', '--stat', 'origin', 'master'])
 
 
 class GitSVNRepo(Repository):

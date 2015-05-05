@@ -6,6 +6,9 @@ TODO:
 
     * Using ABCMeta is shit here; why call method if there is no meaningful
       implementation? Use TemplateMethod instead.
+
+    * Make this work with Python 2.7
+
 """
 
 import sys

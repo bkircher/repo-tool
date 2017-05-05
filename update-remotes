@@ -42,7 +42,8 @@ class Repository(metaclass=ABCMeta):
 
     def __init__(self, path):
         self.path = os.path.join(HOME, path)
-        assert os.path.exists(self.path)
+        if not os.path.exists(self.path):
+            raise Exception('Path `{}` does not exist'.format(self.path))
 
     def fetch_changes(self, args):
         with change_directory(self.path):
